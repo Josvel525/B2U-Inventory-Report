@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Manage - Bartending2U</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -12,15 +12,35 @@
       <h1>Manage List</h1>
       <a class="secondary" href="index.html">Back</a>
     </header>
+
     <section class="card">
       <form id="addProductForm">
-        <label><span>Product Name</span><input id="name" required></label>
-        <label><span>Category</span><input id="category"></label>
-        <button class="primary fullWidth" type="submit" style="margin-top:10px">Add Item</button>
+        <label>
+          <span>Product Name</span>
+          <input id="name" placeholder="e.g. Grey Goose" required>
+        </label>
+        
+        <label>
+          <span>Category</span>
+          <select id="category" required style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: white; font-size: 16px;">
+            <option value="" disabled selected>Select a category...</option>
+            <option value="Non-Alcoholic">Non-Alcoholic</option>
+            <option value="Mixers / Water">Mixers / Water</option>
+            <option value="Beer">Beer</option>
+            <option value="Spirits">Spirits</option>
+            <option value="Wine">Wine</option>
+            <option value="Other">Other</option>
+          </select>
+        </label>
+
+        <button class="primary fullWidth" type="submit" style="margin-top:20px">Add Item</button>
       </form>
     </section>
-    <section id="manageList" class="inventory" style="margin-top:20px"></section>
+
+    <h2 style="margin-top: 24px; font-size: 18px;">Current Items (Tap to Delete)</h2>
+    <section id="manageList" class="inventory" style="margin-top:10px"></section>
   </main>
+
   <script src="script.js"></script>
   <script src="add-product.js"></script>
 </body>
