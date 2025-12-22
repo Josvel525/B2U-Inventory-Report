@@ -1,0 +1,6 @@
+[
+  { "name": "Diet Coke", "category": "Non-Alcoholic", "pack": 24 },
+  { "name": "Topo Chico", "category": "Mixers", "pack": 12 },
+  { "name": "Miller Lite", "category": "Beer", "pack": 24 },
+  { "name": "Titos Vodka", "category": "Spirits", "pack": 6 }
+]

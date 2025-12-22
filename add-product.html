@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Manage - Bartending2U</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <h1>Manage List</h1>
+      <a class="secondary" href="index.html">Back</a>
+    </header>
+    <section class="card">
+      <form id="addProductForm">
+        <label><span>Product Name</span><input id="name" required></label>
+        <label><span>Category</span><input id="category"></label>
+        <button class="primary fullWidth" type="submit" style="margin-top:10px">Add Item</button>
+      </form>
+    </section>
+    <section id="manageList" class="inventory" style="margin-top:20px"></section>
+  </main>
+  <script src="script.js"></script>
+  <script src="add-product.js"></script>
+</body>
+</html>

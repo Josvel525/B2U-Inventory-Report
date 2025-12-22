@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>End of Night Bar Inventory Report</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: Inter, Arial, sans-serif;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: center;
+    }
+    th {
+      background: #111;
+      color: #fff;
+      font-weight: 700;
+    }
+    td:first-child {
+      text-align: left;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>B2U End of Shift Inventory</h1>
+    <section id="report" class="card"></section>
+  </main>
+
+  <script>
+    const data = JSON.parse(localStorage.getItem("products")) || [];
+
+    let h = `
+      <table>
+        <tr>
+          <th>Item</th>
+          <th>Cans (Singles)</th>
+          <th>Cases</th>
+          <th>Cans Per Case</th>
+          <th>Grand Total (Cans)</th>
+        </tr>
+    `;
+
+    data.forEach(p => {
+      const singles = p.singles || 0;
+      const cases = p.cases || 0;
+      const packSize = p.pack || 24;
+      const caseTotal = cases * packSize;
+      const grandTotal = singles + caseTotal;
+
+      h += `
+        <tr>
+          <td>${p.name}</td>
+          <td>${singles}</td>
+          <td>${cases}</td>
+          <td>${caseTotal}</td>
+          <td><strong>${grandTotal}</strong></td>
+        </tr>
+      `;
+    });
+
+    h += "</table>";
+
+    document.getElementById("report").innerHTML = h;
+  </script>
+</body>
+</html>

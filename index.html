@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bartending2U Inventory</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <div>
+        <p class="eyebrow">Bartending2U</p>
+        <h1>B2U Bar Inventory</h1>
+      </div>
+      <div class="headerActions">
+        <button class="primary" onclick="generateReport()">Report</button>
+        <a class="secondary" href="add-product.html">Manage</a>
+      </div>
+    </header>
+    <section id="inventory" class="inventory" aria-live="polite"></section>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>
