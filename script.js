@@ -1,5 +1,5 @@
 const PACK_SIZES = [1, 6, 12, 18, 24, 30, 32, 40];
-const SMS_NUMBER = "15555551234"; // Update this to your real number
+const SMS_NUMBER = "15555551234"; // Replace with your actual number
 
 let products = [];
 
@@ -16,6 +16,20 @@ function normalizeProducts(list) {
 function save(renderNow = true) {
   localStorage.setItem("products", JSON.stringify(products));
   if (renderNow) render();
+}
+
+/**
+ * RESET FUNCTION: Clears counts for new shift
+ */
+function resetInventory() {
+  if (confirm("Reset all counts to zero?")) {
+    products.forEach(p => {
+      p.singles = 0;
+      p.cases = 0;
+      p.completed = false;
+    });
+    save();
+  }
 }
 
 function changePackSize(index) {
@@ -40,7 +54,7 @@ function render() {
       <div class="product">
         <div class="rowTop">
           <div><strong>${p.name}</strong><br><span class="pill">${p.category}</span></div>
-          <button class="secondary" onclick="completeProduct(${i})">Complete</button>
+          <button class="secondary" onclick="completeProduct(${i})">Done</button>
         </div>
         <div class="grid">
           <label><span>Singles</span><div class="stepper">
@@ -56,7 +70,7 @@ function render() {
             </div>
           </label>
         </div>
-        <div class="total">Total: ${totalUnits} units</div>
+        <div class="total">Total: ${totalUnits}</div>
       </div>`;
   }, "");
 }
@@ -71,6 +85,9 @@ function completeProduct(index) {
   save();
 }
 
+/**
+ * GENERATE PDF & TRIGGER SMS
+ */
 async function generateReport() {
   if (!products.length) return alert("No data.");
 
@@ -103,23 +120,24 @@ async function generateReport() {
   win.document.close();
 
   setTimeout(() => {
-    window.location.href = `sms:${SMS_NUMBER}&body=Inventory Complete. Total: ${grandTotal}. PDF created.`;
-  }, 2000);
+    window.location.href = `sms:${SMS_NUMBER}&body=B2U Inventory Summary: ${grandTotal} total units. (PDF Generated)`;
+  }, 2500);
 }
 
-// THE FIX: If there are 4 or fewer items, it forces a reload from inventory.json
+/**
+ * LOAD DATA: Always refreshes if list is the old short version
+ */
 async function ensureProductsLoaded() {
   const stored = localStorage.getItem("products");
   const storedData = stored ? JSON.parse(stored) : [];
 
-  if (storedData.length <= 4) {
+  if (storedData.length < 10) {
     try {
       const res = await fetch("inventory.json");
       const defaults = await res.json();
       products = normalizeProducts(defaults);
       save(false);
     } catch (e) {
-      console.error("Fetch failed, using stored data", e);
       products = normalizeProducts(storedData);
     }
   } else {
