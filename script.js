@@ -1,5 +1,5 @@
 const PACK_SIZES = [1, 6, 12, 18, 24, 30, 32, 40];
-const SMS_NUMBER = "15555551234"; // Set your target phone number here
+const SMS_NUMBER = "15555551234"; // Update this to your real number
 
 let products = [];
 
@@ -18,12 +18,9 @@ function save(renderNow = true) {
   if (renderNow) render();
 }
 
-/**
- * RESTORED: Function to change the number of cans per case
- */
 function changePackSize(index) {
   const current = products[index].pack;
-  const input = prompt(`Change cans per case (Current: ${current}):`, current);
+  const input = prompt(`Cans per case:`, current);
   if (input !== null) {
     const newSize = parseInt(input, 10);
     if (!isNaN(newSize) && newSize > 0) {
@@ -36,15 +33,9 @@ function changePackSize(index) {
 function render() {
   const el = document.getElementById("inventory");
   if (!el) return;
-  if (!products.length) {
-    el.innerHTML = `<div class="product loading">No products loaded.</div>`;
-    return;
-  }
-
   el.innerHTML = products.reduce((markup, p, i) => {
     if (p.completed) return markup;
     const totalUnits = (p.singles || 0) + (p.cases || 0) * (p.pack || 24);
-    
     return markup + `
       <div class="product">
         <div class="rowTop">
@@ -57,10 +48,7 @@ function render() {
             <span>${p.singles}</span>
             <button class="stepperButton" onclick="changeCount(${i},'singles',1)">+</button>
           </div></label>
-          <label>
-            <span onclick="changePackSize(${i})" style="text-decoration:underline; color:#c2410c; cursor:pointer;">
-              ${p.pack} Pack
-            </span>
+          <label><span onclick="changePackSize(${i})" style="text-decoration:underline;color:#c2410c;">${p.pack} Pack</span>
             <div class="stepper">
               <button class="stepperButton" onclick="changeCount(${i},'cases',-1)">-</button>
               <span>${p.cases}</span>
@@ -83,11 +71,8 @@ function completeProduct(index) {
   save();
 }
 
-/**
- * GENERATE PDF & TRIGGER SMS
- */
 async function generateReport() {
-  if (!products.length) return alert("No inventory data.");
+  if (!products.length) return alert("No data.");
 
   let grandTotal = 0;
   let rows = products.map(p => {
@@ -96,61 +81,49 @@ async function generateReport() {
     return `<tr><td>${p.name}</td><td>${p.singles}</td><td>${p.cases}</td><td>${p.pack}</td><td>${total}</td></tr>`;
   }).join('');
 
-  const printWindow = window.open('', '_blank');
-  
-  // Create clean HTML for the PDF
   const reportHTML = `
     <html>
-      <head>
-        <title>B2U Inventory Report</title>
-        <style>
-          body { font-family: -apple-system, sans-serif; padding: 20px; color: #1e293b; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: left; }
-          th { background: #f97316; color: white; }
-          h1 { color: #f97316; }
-          .grand-total { margin-top: 20px; font-size: 1.25rem; font-weight: bold; border-top: 2px solid #f97316; padding-top: 10px; }
-        </style>
-      </head>
+      <head><style>
+        body { font-family: sans-serif; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background: #f97316; color: white; }
+      </style></head>
       <body>
         <h1>B2U Inventory Report</h1>
-        <p>Date: ${new Date().toLocaleString()}</p>
-        <table>
-          <thead><tr><th>Item</th><th>Singles</th><th>Cases</th><th>Pack</th><th>Total</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-        <div class="grand-total">Grand Total: ${grandTotal} Units</div>
-        <script>
-          window.onload = function() { 
-            window.print(); 
-            window.onafterprint = function() { window.close(); };
-          };
-        </script>
+        <table><thead><tr><th>Item</th><th>S</th><th>C</th><th>P</th><th>Total</th></tr></thead>
+        <tbody>${rows}</tbody></table>
+        <p><strong>Grand Total: ${grandTotal}</strong></p>
+        <script>window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };</script>
       </body>
-    </html>
-  `;
+    </html>`;
 
-  printWindow.document.write(reportHTML);
-  printWindow.document.close();
+  const win = window.open('', '_blank');
+  win.document.write(reportHTML);
+  win.document.close();
 
-  // Wait for the print window to be handled before jumping to SMS
   setTimeout(() => {
-    const smsBody = `B2U Inventory Complete. Grand Total: ${grandTotal} units. (PDF Report attached in next step)`;
-    window.location.href = `sms:${SMS_NUMBER}&body=${encodeURIComponent(smsBody)}`;
+    window.location.href = `sms:${SMS_NUMBER}&body=Inventory Complete. Total: ${grandTotal}. PDF created.`;
   }, 2000);
 }
 
+// THE FIX: If there are 4 or fewer items, it forces a reload from inventory.json
 async function ensureProductsLoaded() {
   const stored = localStorage.getItem("products");
-  if (stored) {
-    products = normalizeProducts(JSON.parse(stored));
-  } else {
+  const storedData = stored ? JSON.parse(stored) : [];
+
+  if (storedData.length <= 4) {
     try {
       const res = await fetch("inventory.json");
       const defaults = await res.json();
       products = normalizeProducts(defaults);
       save(false);
-    } catch (e) { console.error("Could not load inventory.json", e); }
+    } catch (e) {
+      console.error("Fetch failed, using stored data", e);
+      products = normalizeProducts(storedData);
+    }
+  } else {
+    products = normalizeProducts(storedData);
   }
 }
 
