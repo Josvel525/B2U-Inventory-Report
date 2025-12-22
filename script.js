@@ -18,11 +18,8 @@ function save(renderNow = true) {
   if (renderNow) render();
 }
 
-/**
- * RESET FUNCTION: Clears counts for new shift
- */
 function resetInventory() {
-  if (confirm("Reset all counts to zero?")) {
+  if (confirm("Reset all counts to zero for a new shift?")) {
     products.forEach(p => {
       p.singles = 0;
       p.cases = 0;
@@ -85,9 +82,6 @@ function completeProduct(index) {
   save();
 }
 
-/**
- * GENERATE PDF & TRIGGER SMS
- */
 async function generateReport() {
   if (!products.length) return alert("No data.");
 
@@ -95,23 +89,43 @@ async function generateReport() {
   let rows = products.map(p => {
     const total = (p.singles || 0) + (p.cases || 0) * (p.pack || 24);
     grandTotal += total;
-    return `<tr><td>${p.name}</td><td>${p.singles}</td><td>${p.cases}</td><td>${p.pack}</td><td>${total}</td></tr>`;
+    return `<tr>
+      <td style="text-align:left;">${p.name}</td>
+      <td>${p.singles}</td>
+      <td>${p.cases}</td>
+      <td>${p.pack}</td>
+      <td style="font-weight:bold;">${total}</td>
+    </tr>`;
   }).join('');
 
   const reportHTML = `
     <html>
-      <head><style>
-        body { font-family: sans-serif; padding: 20px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background: #f97316; color: white; }
-      </style></head>
+      <head>
+        <style>
+          body { font-family: -apple-system, sans-serif; padding: 20px; color: #1e293b; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: center; }
+          th { background: #111; color: white; text-transform: uppercase; font-size: 12px; }
+          h1 { color: #f97316; margin-bottom: 0; }
+          .grand-total { margin-top: 20px; font-size: 1.2rem; font-weight: bold; text-align: right; padding: 10px; background: #f8fafc; border: 1px solid #e2e8f0; }
+        </style>
+      </head>
       <body>
-        <h1>B2U Inventory Report</h1>
-        <table><thead><tr><th>Item</th><th>S</th><th>C</th><th>P</th><th>Total</th></tr></thead>
-        <tbody>${rows}</tbody></table>
-        <p><strong>Grand Total: ${grandTotal}</strong></p>
-        <script>window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };</script>
+        <h1>B2U Shift Report</h1>
+        <p>Date: ${new Date().toLocaleDateString()}</p>
+        <table>
+          <thead>
+            <tr><th style="text-align:left;">Item</th><th>Singles</th><th>Cases</th><th>Pack</th><th>Total</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div class="grand-total">Grand Total Units: ${grandTotal}</div>
+        <script>
+          window.onload = function() { 
+            window.print(); 
+            window.onafterprint = function() { window.close(); };
+          };
+        </script>
       </body>
     </html>`;
 
@@ -119,18 +133,18 @@ async function generateReport() {
   win.document.write(reportHTML);
   win.document.close();
 
+  // SMS Fix for iPhone: Use simple formatting
   setTimeout(() => {
-    window.location.href = `sms:${SMS_NUMBER}&body=B2U Inventory Summary: ${grandTotal} total units. (PDF Generated)`;
-  }, 2500);
+    const msg = encodeURIComponent(`B2U Inventory Complete: ${grandTotal} total units.`);
+    window.location.href = `sms:${SMS_NUMBER}&body=${msg}`;
+  }, 3000);
 }
 
-/**
- * LOAD DATA: Always refreshes if list is the old short version
- */
 async function ensureProductsLoaded() {
   const stored = localStorage.getItem("products");
   const storedData = stored ? JSON.parse(stored) : [];
 
+  // If list is short (old 4 items), force load the new 29 items from JSON
   if (storedData.length < 10) {
     try {
       const res = await fetch("inventory.json");
