@@ -3,26 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <title>B2U Inventory</title>
+  
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="B2U Inventory">
+  
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main class="container">
-    <header class="header">
-      <div>
-        <p class="eyebrow">Bartending2U</p>
-        <h1>B2U Inventory</h1>
-      </div>
-      <div class="headerActions">
-        <button class="secondary" onclick="resetInventory()" style="border-color: #ef4444; color: #ef4444;">Reset</button>
-        <button class="primary" onclick="generateReport()">Report</button>
-        <a class="secondary" href="add-product.html">Manage</a>
-      </div>
-    </header>
-    <section id="inventory" class="inventory"></section>
-  </main>
-  <script src="script.js"></script>
+
+<main class="container">
+  <header class="header">
+    <div>
+      <p class="eyebrow">Bartending2U</p>
+      <h1>B2U Inventory</h1>
+    </div>
+    
+    <div class="headerActions">
+      <button class="secondary" onclick="resetInventory()" style="border-color: #ef4444; color: #ef4444; font-size: 13px;">Reset</button>
+      <button class="primary" onclick="generateReport()" style="font-size: 13px;">Report</button>
+      <a class="secondary" href="add-product.html" style="font-size: 13px;">Manage</a>
+    </div>
+  </header>
+
+  <section id="inventory" class="inventory" aria-live="polite"></section>
+</main>
+
+<script src="script.js"></script>
+
 </body>
 </html>
