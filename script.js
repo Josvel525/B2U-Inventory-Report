@@ -1,5 +1,5 @@
 const PACK_SIZES = [1, 6, 12, 18, 24, 30, 32, 40];
-const SMS_NUMBER = "15555551234"; // Replace with your actual number
+const SMS_NUMBER = "15555551234"; // IMPORTANT: Change this to your real number
 
 let products = [];
 
@@ -18,8 +18,11 @@ function save(renderNow = true) {
   if (renderNow) render();
 }
 
+/**
+ * RESET: Clear counts for the shift
+ */
 function resetInventory() {
-  if (confirm("Reset all counts to zero for a new shift?")) {
+  if (confirm("Reset all counts to zero?")) {
     products.forEach(p => {
       p.singles = 0;
       p.cases = 0;
@@ -82,8 +85,11 @@ function completeProduct(index) {
   save();
 }
 
+/**
+ * REPORT: Generate PDF table and trigger iPhone SMS
+ */
 async function generateReport() {
-  if (!products.length) return alert("No data.");
+  if (!products.length) return alert("No inventory found.");
 
   let grandTotal = 0;
   let rows = products.map(p => {
@@ -102,30 +108,23 @@ async function generateReport() {
     <html>
       <head>
         <style>
-          body { font-family: -apple-system, sans-serif; padding: 20px; color: #1e293b; }
+          body { font-family: -apple-system, sans-serif; padding: 20px; color: #000; }
           table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: center; }
-          th { background: #111; color: white; text-transform: uppercase; font-size: 12px; }
-          h1 { color: #f97316; margin-bottom: 0; }
-          .grand-total { margin-top: 20px; font-size: 1.2rem; font-weight: bold; text-align: right; padding: 10px; background: #f8fafc; border: 1px solid #e2e8f0; }
+          th, td { border: 1px solid #ccc; padding: 10px; text-align: center; font-size: 14px; }
+          th { background: #111; color: white; text-transform: uppercase; }
+          h1 { color: #f97316; margin-bottom: 5px; }
+          .grand-total { margin-top: 20px; font-size: 18px; font-weight: bold; text-align: right; }
         </style>
       </head>
       <body>
-        <h1>B2U Shift Report</h1>
+        <h1>B2U Inventory Report</h1>
         <p>Date: ${new Date().toLocaleDateString()}</p>
         <table>
-          <thead>
-            <tr><th style="text-align:left;">Item</th><th>Singles</th><th>Cases</th><th>Pack</th><th>Total</th></tr>
-          </thead>
+          <thead><tr><th style="text-align:left;">Item</th><th>S</th><th>C</th><th>P</th><th>Total</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
-        <div class="grand-total">Grand Total Units: ${grandTotal}</div>
-        <script>
-          window.onload = function() { 
-            window.print(); 
-            window.onafterprint = function() { window.close(); };
-          };
-        </script>
+        <div class="grand-total">Grand Total: ${grandTotal} Units</div>
+        <script>window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };</script>
       </body>
     </html>`;
 
@@ -133,27 +132,29 @@ async function generateReport() {
   win.document.write(reportHTML);
   win.document.close();
 
-  // SMS Fix for iPhone: Use simple formatting
+  // Trigger SMS Summary
   setTimeout(() => {
-    const msg = encodeURIComponent(`B2U Inventory Complete: ${grandTotal} total units.`);
-    window.location.href = `sms:${SMS_NUMBER}&body=${msg}`;
-  }, 3000);
+    const bodyText = encodeURIComponent(`B2U Inventory Summary: ${grandTotal} total units. (PDF Report attached separately)`);
+    // &body works for iPhone SMS links with numbers
+    window.location.href = `sms:${SMS_NUMBER}&body=${bodyText}`;
+  }, 2500);
 }
 
+/**
+ * STARTUP: Load master list from JSON if the app is empty
+ */
 async function ensureProductsLoaded() {
   const stored = localStorage.getItem("products");
   const storedData = stored ? JSON.parse(stored) : [];
 
-  // If list is short (old 4 items), force load the new 29 items from JSON
+  // If memory is empty or missing items, pull the 29-item list from JSON
   if (storedData.length < 10) {
     try {
       const res = await fetch("inventory.json");
       const defaults = await res.json();
       products = normalizeProducts(defaults);
       save(false);
-    } catch (e) {
-      products = normalizeProducts(storedData);
-    }
+    } catch (e) { products = normalizeProducts(storedData); }
   } else {
     products = normalizeProducts(storedData);
   }
