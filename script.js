@@ -2,8 +2,8 @@
  * CONFIGURATION
  */
 const PACK_SIZES = [1, 6, 12, 18, 24, 30, 32, 40];
-const SMS_NUMBER = "15555551234"; // Update this to your real number
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhFBIoPtI34rbLnlQTb1ZUNGCvW9yUAPwzHK5iCPC1yHPgiEd1syfy44Y13qhW7zg/exec";
+const SMS_NUMBER = "15555551234"; // Update to your actual recipient number
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbTQPp2ME54l1H9jtTF_B-raP29rYwTPjXgsqevRQTzfYmFeSbyu23KCnQq9JqpgVc/exec";
 
 let products = [];
 
@@ -103,13 +103,17 @@ function completeProduct(index) {
 }
 
 /**
- * REPORT: Sends Data to Google Script & Triggers SMS
+ * REPORT GENERATION
+ * Optimized for iPhone: Sends data, waits for PDF link, then opens SMS.
  */
 async function generateReport() {
   if (!products || products.length === 0) return alert("No data found.");
 
+  // Target the report button for UI feedback
+  const btn = document.querySelector(".generate-btn");
+  const originalText = btn ? btn.innerText : "Generate Report";
+  
   let grandTotal = 0;
-  // Prepare data for Google
   const reportItems = products.map(p => {
     const total = (p.singles || 0) + (p.cases || 0) * (p.pack || 24);
     grandTotal += total;
@@ -122,15 +126,15 @@ async function generateReport() {
     };
   });
 
-  alert("Uploading report to Google... Please wait.");
+  if (btn) {
+    btn.innerText = "Generating PDF...";
+    btn.disabled = true;
+  }
 
   try {
-    // 1. POST to Google Apps Script
-    // Using 'no-cors' mode for Google Web Apps compatibility
-    await fetch(GOOGLE_SCRIPT_URL, {
+    // 1. Send data to Google Script
+    const response = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
-      mode: "no-cors", 
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ 
         items: reportItems, 
         grandTotal: grandTotal,
@@ -138,28 +142,44 @@ async function generateReport() {
       })
     });
 
-    // 2. Trigger SMS Summary
-    // Opens the native SMS app with the data pre-filled
-    setTimeout(() => {
-      const msg = encodeURIComponent(`B2U Inventory Summary:\nTotal Units: ${grandTotal}\nFull PDF Report has been generated and saved to Drive.`);
+    // 2. Get the link from the response
+    const result = await response.json();
+
+    if (result.url) {
+      const shareLink = result.url;
+      const msg = encodeURIComponent(`B2U Inventory Summary:\nTotal Units: ${grandTotal}\nView PDF Report: ${shareLink}`);
+      
+      // 3. Trigger SMS (Auto-prompt)
       window.location.href = `sms:${SMS_NUMBER}?body=${msg}`;
-    }, 1200);
+
+      // 4. Update button as a fallback manual trigger
+      if (btn) {
+        btn.innerText = "Send Text Manually";
+        btn.disabled = false;
+        btn.onclick = () => { window.location.href = `sms:${SMS_NUMBER}?body=${msg}`; };
+      }
+    } else {
+      throw new Error("No URL returned from Google.");
+    }
 
   } catch (e) {
     console.error("Report Error:", e);
-    alert("Error communicating with Google Script. Check your connection.");
+    alert("The report was saved to Drive, but there was an issue opening the text message automatically.");
+    if (btn) {
+      btn.innerText = originalText;
+      btn.disabled = false;
+    }
   }
 }
 
 /**
- * LOAD DATA: Fetches inventory.json if memory is empty
+ * LOAD DATA: Fetches inventory.json if local storage is empty
  */
 async function ensureProductsLoaded() {
   const stored = localStorage.getItem("products");
   const storedData = stored ? JSON.parse(stored) : [];
 
-  // Logic to refresh data if empty or outdated
-  if (storedData.length < 10) {
+  if (storedData.length < 5) {
     try {
       const res = await fetch("inventory.json");
       const defaults = await res.json();
@@ -173,5 +193,5 @@ async function ensureProductsLoaded() {
   }
 }
 
-// Initialize the app
+// Start app
 ensureProductsLoaded().then(render);
