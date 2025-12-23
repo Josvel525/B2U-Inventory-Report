@@ -1,6 +1,9 @@
+/**
+ * CONFIGURATION
+ */
 const PACK_SIZES = [1, 6, 12, 18, 24, 30, 32, 40];
 const SMS_NUMBER = "15555551234"; // Update this to your real number
-const FORMSPREE_URL = "https://formspree.io/f/xqezggkz"; 
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhFBIoPtI34rbLnlQTb1ZUNGCvW9yUAPwzHK5iCPC1yHPgiEd1syfy44Y13qhW7zg/exec";
 
 let products = [];
 
@@ -18,7 +21,7 @@ function normalizeProducts(list) {
 }
 
 /**
- * Saves current state to iPhone memory and refreshes the UI
+ * Saves current state to device memory and refreshes the UI
  */
 function save(renderNow = true) {
   localStorage.setItem("products", JSON.stringify(products));
@@ -60,6 +63,7 @@ function changePackSize(index) {
 function render() {
   const el = document.getElementById("inventory");
   if (!el) return;
+  
   el.innerHTML = products.reduce((markup, p, i) => {
     if (p.completed) return markup;
     const totalUnits = (p.singles || 0) + (p.cases || 0) * (p.pack || 24);
@@ -99,79 +103,52 @@ function completeProduct(index) {
 }
 
 /**
- * REPORT: Sends Email, Opens PDF, and Triggers SMS
+ * REPORT: Sends Data to Google Script & Triggers SMS
  */
 async function generateReport() {
-  if (!products.length) return alert("No data found.");
+  if (!products || products.length === 0) return alert("No data found.");
 
   let grandTotal = 0;
-  let tableBody = "";
-  
-  // Build data for Email and PDF
-  products.forEach(p => {
+  // Prepare data for Google
+  const reportItems = products.map(p => {
     const total = (p.singles || 0) + (p.cases || 0) * (p.pack || 24);
     grandTotal += total;
-    tableBody += `
-      <tr>
-        <td style="border:1px solid #ccc; padding:8px; text-align:left;">${p.name}</td>
-        <td style="border:1px solid #ccc; padding:8px; text-align:center;">${p.singles}</td>
-        <td style="border:1px solid #ccc; padding:8px; text-align:center;">${p.cases}</td>
-        <td style="border:1px solid #ccc; padding:8px; text-align:center;">${p.pack}</td>
-        <td style="border:1px solid #ccc; padding:8px; text-align:center; font-weight:bold;">${total}</td>
-      </tr>`;
+    return {
+      name: p.name,
+      singles: p.singles,
+      cases: p.cases,
+      pack: p.pack,
+      total: total
+    };
   });
 
-  // 1. SEND EMAIL via Formspree (HTML Format)
-  const emailBody = `
-    <h2>B2U Inventory Report</h2>
-    <p>Date: ${new Date().toLocaleString()}</p>
-    <table style="width:100%; border-collapse:collapse; font-family:sans-serif;">
-      <thead><tr style="background:#111; color:#fff;"><th>Item</th><th>S</th><th>C</th><th>P</th><th>Total</th></tr></thead>
-      <tbody>${tableBody}</tbody>
-    </table>
-    <h3>Grand Total: ${grandTotal} Units</h3>
-  `;
+  alert("Uploading report to Google... Please wait.");
 
   try {
-    fetch(FORMSPREE_URL, {
+    // 1. POST to Google Apps Script
+    // Using 'no-cors' mode for Google Web Apps compatibility
+    await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Accept": "application/json" },
-      body: JSON.stringify({ message: emailBody, _subject: "B2U Shift Report" })
+      mode: "no-cors", 
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        items: reportItems, 
+        grandTotal: grandTotal,
+        timestamp: new Date().toLocaleString() 
+      })
     });
-    alert("Report sent to email!");
-  } catch (e) { console.error("Email error", e); }
 
-  // 2. OPEN PDF PRINT WINDOW
-  const printWindow = window.open('', '_blank');
-  printWindow.document.write(`
-    <html>
-      <head>
-        <style>
-          body { font-family: sans-serif; padding: 20px; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid #000; padding: 10px; text-align: center; }
-          th { background: #eee; }
-          h1 { color: #f97316; }
-        </style>
-      </head>
-      <body>
-        <h1>B2U Shift Report</h1>
-        <table>
-          <thead><tr><th>Item</th><th>Singles</th><th>Cases</th><th>Pack</th><th>Total</th></tr></thead>
-          <tbody>${tableBody}</tbody>
-        </table>
-        <h2>Grand Total: ${grandTotal} Units</h2>
-        <script>window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };</script>
-      </body>
-    </html>
-  `);
-  printWindow.document.close();
+    // 2. Trigger SMS Summary
+    // Opens the native SMS app with the data pre-filled
+    setTimeout(() => {
+      const msg = encodeURIComponent(`B2U Inventory Summary:\nTotal Units: ${grandTotal}\nFull PDF Report has been generated and saved to Drive.`);
+      window.location.href = `sms:${SMS_NUMBER}?body=${msg}`;
+    }, 1200);
 
-  // 3. TRIGGER SMS SUMMARY
-  setTimeout(() => {
-    const msg = encodeURIComponent(`B2U Inventory Complete: ${grandTotal} total units. (Email Sent)`);
-    window.location.href = `sms:${SMS_NUMBER}&body=${msg}`;
-  }, 2500);
+  } catch (e) {
+    console.error("Report Error:", e);
+    alert("Error communicating with Google Script. Check your connection.");
+  }
 }
 
 /**
@@ -181,7 +158,7 @@ async function ensureProductsLoaded() {
   const stored = localStorage.getItem("products");
   const storedData = stored ? JSON.parse(stored) : [];
 
-  // If memory has fewer than 10 items, force load the full 29-item list
+  // Logic to refresh data if empty or outdated
   if (storedData.length < 10) {
     try {
       const res = await fetch("inventory.json");
@@ -196,5 +173,5 @@ async function ensureProductsLoaded() {
   }
 }
 
-// Start the app
+// Initialize the app
 ensureProductsLoaded().then(render);
