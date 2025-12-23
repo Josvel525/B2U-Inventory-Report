@@ -1,5 +1,6 @@
 const PACK_SIZES = [1, 6, 12, 18, 24, 30, 32, 40];
-const SMS_NUMBER = "15555551234"; // IMPORTANT: Change this to your real number
+const SMS_NUMBER = "15555551234"; // Change to your actual number
+const FORMSPREE_URL = "https://formspree.io/f/xqezggkz"; 
 
 let products = [];
 
@@ -18,15 +19,10 @@ function save(renderNow = true) {
   if (renderNow) render();
 }
 
-/**
- * RESET: Clear counts for the shift
- */
 function resetInventory() {
   if (confirm("Reset all counts to zero?")) {
     products.forEach(p => {
-      p.singles = 0;
-      p.cases = 0;
-      p.completed = false;
+      p.singles = 0; p.cases = 0; p.completed = false;
     });
     save();
   }
@@ -86,68 +82,48 @@ function completeProduct(index) {
 }
 
 /**
- * REPORT: Generate PDF table and trigger iPhone SMS
+ * AUTO-EMAIL VIA FORMSPREE + SMS
  */
 async function generateReport() {
-  if (!products.length) return alert("No inventory found.");
+  if (!products.length) return alert("No data.");
 
   let grandTotal = 0;
-  let rows = products.map(p => {
+  // Create a plain text version for the email body
+  let emailContent = "B2U Shift Report\n------------------\n";
+  
+  products.forEach(p => {
     const total = (p.singles || 0) + (p.cases || 0) * (p.pack || 24);
     grandTotal += total;
-    return `<tr>
-      <td style="text-align:left;">${p.name}</td>
-      <td>${p.singles}</td>
-      <td>${p.cases}</td>
-      <td>${p.pack}</td>
-      <td style="font-weight:bold;">${total}</td>
-    </tr>`;
-  }).join('');
+    emailContent += `${p.name}: ${p.singles} Singles, ${p.cases} Cases (${p.pack}pk) | Total: ${total}\n`;
+  });
 
-  const reportHTML = `
-    <html>
-      <head>
-        <style>
-          body { font-family: -apple-system, sans-serif; padding: 20px; color: #000; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #ccc; padding: 10px; text-align: center; font-size: 14px; }
-          th { background: #111; color: white; text-transform: uppercase; }
-          h1 { color: #f97316; margin-bottom: 5px; }
-          .grand-total { margin-top: 20px; font-size: 18px; font-weight: bold; text-align: right; }
-        </style>
-      </head>
-      <body>
-        <h1>B2U Inventory Report</h1>
-        <p>Date: ${new Date().toLocaleDateString()}</p>
-        <table>
-          <thead><tr><th style="text-align:left;">Item</th><th>S</th><th>C</th><th>P</th><th>Total</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-        <div class="grand-total">Grand Total: ${grandTotal} Units</div>
-        <script>window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };</script>
-      </body>
-    </html>`;
+  emailContent += `\nGRAND TOTAL UNITS: ${grandTotal}`;
 
-  const win = window.open('', '_blank');
-  win.document.write(reportHTML);
-  win.document.close();
+  // 1. SEND THE EMAIL (Hidden from user)
+  try {
+    fetch(FORMSPREE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        subject: `New B2U Inventory Report - ${grandTotal} Units`,
+        message: emailContent
+      })
+    });
+    alert("Report sent to email!");
+  } catch (err) {
+    console.error("Email failed", err);
+  }
 
-  // Trigger SMS Summary
+  // 2. TRIGGER SMS
   setTimeout(() => {
-    const bodyText = encodeURIComponent(`B2U Inventory Summary: ${grandTotal} total units. (PDF Report attached separately)`);
-    // &body works for iPhone SMS links with numbers
+    const bodyText = encodeURIComponent(`B2U Inventory Summary: ${grandTotal} units. (Email sent)`);
     window.location.href = `sms:${SMS_NUMBER}&body=${bodyText}`;
-  }, 2500);
+  }, 1000);
 }
 
-/**
- * STARTUP: Load master list from JSON if the app is empty
- */
 async function ensureProductsLoaded() {
   const stored = localStorage.getItem("products");
   const storedData = stored ? JSON.parse(stored) : [];
-
-  // If memory is empty or missing items, pull the 29-item list from JSON
   if (storedData.length < 10) {
     try {
       const res = await fetch("inventory.json");
